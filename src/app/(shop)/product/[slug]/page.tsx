@@ -1,59 +1,87 @@
-import { ProductMobileSlideshow, ProductSlideshow, QuantitySelector, SizeSelector } from "@/components";
+export const revalidate = 604800; //7 días
+
+import { getProductBySlug } from "@/actions";
+import {
+  ProductMobileSlideshow,
+  ProductSlideshow,
+  QuantitySelector,
+  SizeSelector,
+  StockLabel,
+} from "@/components";
 import { titleFont } from "@/config/fonts";
 import { initialData } from "@/seed/seed";
+import { Metadata, ResolvingMetadata } from "next";
 import { notFound } from "next/navigation";
+import { AddToCart } from "./ui/AddToCart";
 
-interface Props{
+interface Props {
   params: {
     slug: string;
-  }
+  };
 }
 
+export async function generateMetadata(
+  { params }: Props,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  // read route params
+  const slug = params.slug;
 
-export default function ProductPage({params}: Props) {
+  // fetch data
+  const product = await getProductBySlug(slug);
 
-  const {slug} = params;
-  const product = initialData.products.find(product => product.slug === slug);
+  return {
+    title: product?.title ?? "Producto no encontrado",
+    description: product?.description ?? "",
+    openGraph: {
+      title: product?.title ?? "Producto no encontrado",
+      description: product?.description ?? "",
+      images: [`/products/${product?.images[1]}`],
+    },
+  };
+}
 
-  if(!product){
+export default async function ProductPage({ params }: Props) {
+  const { slug } = params;
+  const product = await getProductBySlug(slug);
+
+  if (!product) {
     notFound();
   }
 
   return (
     <div className="mt-5 mb-20 grid md:grid-cols-3 gap-3">
-
       {/* Mobile Slideshow */}
-      <ProductMobileSlideshow title={product.title} images={product.images} className="block md:hidden"/>
+      <ProductMobileSlideshow
+        title={product.title}
+        images={product.images}
+        className="block md:hidden"
+      />
 
       {/* Desktop Slideshow */}
       <div className="col-span-1 md:col-span-2">
-        <ProductSlideshow title={product.title} images={product.images} className="hidden md:block"/>
-      </div> 
+        <ProductSlideshow
+          title={product.title}
+          images={product.images}
+          className="hidden md:block"
+        />
+      </div>
 
       {/*Detalles*/}
       <div className="col-span-1 px-5">
+        <StockLabel slug={product.slug} />
+
         <h1 className={` ${titleFont.className} antialiased font-bold text-xl`}>
           {product.title}
         </h1>
         <p className="text-lg mb-5">${product.price}</p>
 
-        {/*Selector de tallas*/}
-        <SizeSelector selectedSize={product.sizes[0]} availableSizes={product.sizes}/>
-         
-        {/*Selector de cantidad*/}
-        <QuantitySelector quantity={2}/>
-
-        {/*Botón */}
-        <button className="btn-primary my-5">
-          Añadir al carrito
-        </button>
+       <AddToCart product={product}/>
 
         {/*Descripción */}
         <h3 className="font-bold text-sm">Descripción</h3>
         <p className="font-light">{product.description}</p>
-
       </div>
-
     </div>
   );
 }
